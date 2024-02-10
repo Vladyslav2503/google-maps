@@ -3,7 +3,7 @@ import { FC, useEffect, useRef, useState, useCallback } from 'react';
 import styles from "./Map.module.css";
 import { db } from '../../config/firestore-config';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, writeBatch, Timestamp } from 'firebase/firestore';
-import {MarkerData, Props, containerStyle } from '../../types/types';
+import { MarkerData, Props, containerStyle } from '../../types/types';
 
 const Map: FC<Props> = ({ center } ) => {
     const [markers, setMarkers] = useState<MarkerData[]>([]);
@@ -31,16 +31,24 @@ const Map: FC<Props> = ({ center } ) => {
         const newMarker: MarkerData = {
             Location: { Lat: latValue, Long: longValue },
             Time: Timestamp.now(),
-            id: Date.now().toString()
+            id: Date.now().toString(),
+            Next: null // Додати поле Next зі значенням null для нового маркера
         };
         try {
             const docRef = await addDoc(collection(db, "markers"), newMarker);
             newMarker.id = docRef.id;
             setMarkers(prevMarkers => [...prevMarkers, newMarker]);
+            // Оновити попередній маркер, якщо він існує, щоб вказати на новий маркер
+            if (markers.length > 0) {
+                const prevMarker = markers[markers.length - 1];
+                const updatedPrevMarker = { ...prevMarker, Next: newMarker.id };
+                const prevMarkerDocRef = doc(collection(db, "markers"), prevMarker.id);
+                await updateDoc(prevMarkerDocRef, updatedPrevMarker);
+            }
         } catch (error) {
             console.error("Error adding marker: ", error);
         }
-    }, []);
+    }, [markers]);
 
     const deleteMarker = async (marker: MarkerData) => {
         try {
