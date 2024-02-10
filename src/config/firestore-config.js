@@ -2,13 +2,13 @@ import { initializeApp } from "firebase/app";
 import {getFirestore} from "firebase/firestore"
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAW_9_9rbsUoB5ZVmJRgSrxqOS3WHwHOS8",
-  authDomain: "maps-aee8b.firebaseapp.com",
+  apiKey: process.env.FIREBASE_API_KEY,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
   projectId: "maps-aee8b",
-  storageBucket: "maps-aee8b.appspot.com",
-  messagingSenderId: "557741465789",
-  appId: "1:557741465789:web:f91c685e19cde5adadd7d4",
-  measurementId: "G-T155CVR3X3"
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.FIREBASE_APP_ID,
+  measurementId: process.env.FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);

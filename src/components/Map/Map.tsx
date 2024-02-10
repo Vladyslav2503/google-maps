@@ -1,28 +1,10 @@
 import { GoogleMap, Marker, MarkerClusterer } from '@react-google-maps/api';
 import { FC, useEffect, useRef, useState } from 'react';
-import s from "./Map.module.css";
+import styles from "./Map.module.css";
 import { db } from '../../config/firestore-config';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, writeBatch, Timestamp } from 'firebase/firestore';
+import { Location, MarkerData, Props, containerStyle } from '../../types/types';
 
-interface Location {
-    Lat: number;
-    Long: number;
-}
-
-interface MarkerData {
-    id: string;
-    Location: Location;
-    Time: Timestamp;
-}
-
-const containerStyle = {
-    width: '100%',
-    height: '100%'
-};
-
-type Props = {
-     center: google.maps.LatLngLiteral 
-}
 
 const Map: FC<Props> = ({ center } ) => {
     const [markers, setMarkers] = useState<MarkerData[]>([]);
@@ -56,7 +38,7 @@ const Map: FC<Props> = ({ center } ) => {
                 Long: longValue
             },
             Time: Timestamp.now(),
-            id: ""
+            id: Date.now().toString()
         };
         try {
 
@@ -78,10 +60,6 @@ const Map: FC<Props> = ({ center } ) => {
         }
     };
 
-    const handleMarkerMouseOver = (marker: MarkerData) => {
-        setHoveredMarker(marker);
-    };
-
     const handleDeleteAllMarkers = async () => {
         try {
             const snapshot = await getDocs(collection(db, "markers"));
@@ -92,6 +70,10 @@ const Map: FC<Props> = ({ center } ) => {
         } catch (error) {
             console.error("Error deleting all markers: ", error);
         }
+    };
+
+    const handleMarkerMouseOver = (marker: MarkerData) => {
+        setHoveredMarker(marker);
     };
 
     const handleMarkerMouseOut = () => {
@@ -146,7 +128,7 @@ const Map: FC<Props> = ({ center } ) => {
     };
 
     return (
-        <div className={s.container}>
+        <div className={styles.container}>
             <GoogleMap
                 mapContainerStyle={containerStyle}
                 center={center}
@@ -175,9 +157,9 @@ const Map: FC<Props> = ({ center } ) => {
                     )}
                 </MarkerClusterer>
             </GoogleMap>
-            <button className={s.deleteButton} onClick={handleDeleteAllMarkers}>Видалити всі маркери</button>
+            <button className={styles.deleteButton} onClick={handleDeleteAllMarkers}>Видалити всі маркери</button>
             {markers.length > 0 && hoveredMarker && (
-                <div className={s.hoveredMarkerInfo}>
+                <div className={styles.hoveredMarkerInfo}>
                     Координати маркера: Lat: {hoveredMarker.Location.Lat.toFixed(6)}, Lng: {hoveredMarker.Location.Long.toFixed(6)} | Додано: {new Date(hoveredMarker.Time.toMillis()).toLocaleString()}
                 </div>
             )}
