@@ -14,7 +14,7 @@ export interface MarkerData {
     id: string;
     Location: Location;
     Time: Timestamp;
-    Next: any
+    Next: string | null
 }
 
 export type Props = {
