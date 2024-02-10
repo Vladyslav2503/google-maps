@@ -1,17 +1,15 @@
 import { GoogleMap, Marker, MarkerClusterer } from '@react-google-maps/api';
-import { FC, useEffect, useRef, useState } from 'react';
+import { FC, useEffect, useRef, useState, useCallback } from 'react';
 import styles from "./Map.module.css";
 import { db } from '../../config/firestore-config';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, writeBatch, Timestamp } from 'firebase/firestore';
-import { Location, MarkerData, Props, containerStyle } from '../../types/types';
-
+import {MarkerData, Props, containerStyle } from '../../types/types';
 
 const Map: FC<Props> = ({ center } ) => {
     const [markers, setMarkers] = useState<MarkerData[]>([]);
     const [hoveredMarker, setHoveredMarker] = useState<MarkerData | null>(null);
-
     const mapRef = useRef<google.maps.Map | null>(null);
-    const draggedMarkerRef = useRef<MarkerData | null>(null);
+    const draggedMarkerIndexRef = useRef<number | null>(null);
 
     useEffect(() => {
         const getMarkers = async () => {
@@ -26,29 +24,23 @@ const Map: FC<Props> = ({ center } ) => {
         getMarkers();
     }, []);
 
-    const addMarker = async (event: google.maps.MapMouseEvent) => {
+    const addMarker = useCallback(async (event: google.maps.MapMouseEvent) => {
         if (!event || !event.latLng) return;
-
-        const latValue = event.latLng.lat()
-        const longValue = event.latLng.lng()
-
+        const latValue = event.latLng.lat();
+        const longValue = event.latLng.lng();
         const newMarker: MarkerData = {
-            Location: {
-                Lat: latValue,
-                Long: longValue
-            },
+            Location: { Lat: latValue, Long: longValue },
             Time: Timestamp.now(),
             id: Date.now().toString()
         };
         try {
-
             const docRef = await addDoc(collection(db, "markers"), newMarker);
             newMarker.id = docRef.id;
             setMarkers(prevMarkers => [...prevMarkers, newMarker]);
         } catch (error) {
             console.error("Error adding marker: ", error);
         }
-    };
+    }, []);
 
     const deleteMarker = async (marker: MarkerData) => {
         try {
@@ -80,42 +72,31 @@ const Map: FC<Props> = ({ center } ) => {
         setHoveredMarker(null);
     };
 
-    const handleDragStart = (event: google.maps.MapMouseEvent, marker: MarkerData) => {
-        draggedMarkerRef.current = marker;
+    const handleDragStart = (marker: MarkerData, index: number) => {
+        draggedMarkerIndexRef.current = index;
     };
 
     const handleDragEnd = async (marker: MarkerData, event: google.maps.MapMouseEvent) => {
         if (!event || !event.latLng) return;
-        const Location: Location = {
-            Lat: event.latLng.lat(),
-            Long: event.latLng.lng()
+        const newLat = event.latLng.lat();
+        const newLng = event.latLng.lng();
+
+        const updatedMarker: MarkerData = {
+            ...marker,
+            Location: { Lat: newLat, Long: newLng }
         };
 
-        const updatedMarkers = markers.map(m => {
-            if (m === marker) {
-                return {
-                    ...m,
-                    Location: { ...m.Location, Lat: Location.Lat, Long: Location.Long },
-                    Time: Timestamp.now()
-                };
-            }
-            return m;
-        });
+        const markerIndex = markers.findIndex(m => m.id === marker.id);
+
+        const updatedMarkers = [...markers];
+        updatedMarkers[markerIndex] = updatedMarker;
 
         try {
-            await updateMarkerInFirestore(marker.id, { Location: { Lat: Location.Lat, Long: Location.Long } });
+            const markerDocRef = doc(collection(db, "markers"), marker.id);
+            await updateDoc(markerDocRef, { Location: { Lat: newLat, Long: newLng } });
             setMarkers(updatedMarkers);
         } catch (error) {
             console.error("Error updating marker coordinates: ", error);
-        }
-    };
-
-    const updateMarkerInFirestore = async (markerId: string, newData: Partial<MarkerData>) => {
-        try {
-            const markerDocRef = doc(collection(db, "markers"), markerId);
-            await updateDoc(markerDocRef, newData);
-        } catch (error) {
-            console.error("Error updating marker in Firestore: ", error);
         }
     };
 
@@ -140,7 +121,7 @@ const Map: FC<Props> = ({ center } ) => {
                 <MarkerClusterer options={{ imagePath: 'https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/m' }}>
                     {clusterer => (
                         <div>
-                            {markers.map(marker => (
+                            {markers.map((marker, index) => (
                                 <Marker
                                     key={marker.id}
                                     position={{ lat: marker.Location.Lat, lng: marker.Location.Long }}
@@ -148,7 +129,7 @@ const Map: FC<Props> = ({ center } ) => {
                                     onMouseOver={() => handleMarkerMouseOver(marker)}
                                     onMouseOut={handleMarkerMouseOut}
                                     draggable
-                                    onDragStart={event => handleDragStart(event, marker)}
+                                    onDragStart={() => handleDragStart(marker, index)}
                                     onDragEnd={event => handleDragEnd(marker, event)}
                                     clusterer={clusterer}
                                 />
